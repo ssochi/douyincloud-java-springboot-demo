@@ -3,10 +3,13 @@ package com.bytedance.douyinclouddemo.controller;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.bytedance.douyinclouddemo.model.JsonResponse;
+import com.bytedance.douyinclouddemo.model.LivePlayAPIResponse;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.*;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -20,23 +23,87 @@ import java.util.Arrays;
 public class LivePlayDemoController {
 
     /**
-     * 抖音云unity_sdk的callContainer的服务端demo
+     * 开始玩法对局，玩法开始前调用
      */
-    @PostMapping(path = "/call_container_example")
+    @PostMapping(path = "/start_game")
     public JsonResponse callContainerExample(HttpServletRequest httpRequest) {
         // 开发者可以直接通过请求头获取直播间信息,无需自行通过token置换
+        String appID = httpRequest.getHeader("X-TT-AppID");
         String roomID = httpRequest.getHeader("X-Room-ID");
         String anchorOpenID = httpRequest.getHeader("X-Anchor-OpenID");
         String avatarUrl = httpRequest.getHeader("X-Avatar-Url");
         String nickName = httpRequest.getHeader("X-Nick-Name");
-        log.info("roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}", roomID, anchorOpenID, avatarUrl, nickName);
 
-        // TODO: 开发者自行实现业务逻辑
+        log.info("appID: {}, roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}", appID,
+                roomID, anchorOpenID, avatarUrl, nickName);
 
         JsonResponse response = new JsonResponse();
-        response.success("success");
+        // 调用弹幕玩法服务端API，开启直播间推送任务，开启后，开发者服务器会通过/live_data_callback接口 收到直播间玩法指令
+        boolean result = startLiveDataTask(appID, roomID);
+        if (result) {
+            response.success("开始玩法对局成功");
+        } else {
+            response.failure("开始玩法对局失败");
+        }
         return response;
     }
+
+    /**
+     * startLiveDataTask: 开启推送任务：<a href="https://developer.open-douyin.com/docs/resource/zh-CN/interaction/develop/server/live/danmu#%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1">...</a>
+     *
+     * @param appID  小玩法appID
+     * @param roomID 直播间ID
+     */
+    private boolean startLiveDataTask(String appID, String roomID) {
+        // example: 通过java OkHttp库发起http请求,开发者可使用其余http访问形式
+        OkHttpClient client = new OkHttpClient();
+        String liveCommentMsgType = "live_comment"; // 这里以开启评论推送任务为例
+        String body = new JSONObject()
+                .fluentPut("roomid", roomID)
+                .fluentPut("appid", appID)
+                .fluentPut("msg_type", liveCommentMsgType)
+                .toString();
+        Request request = new Request.Builder()
+                .url("http://webcast.bytedance.com/api/live_data/task/start") // 内网专线访问小玩法openAPI,无需https协议
+                .addHeader("Content-Type", "application/json") // 无需维护access_token
+                .post(
+                        okhttp3.RequestBody.create(
+                                MediaType.get("application/json; charset=utf-8"),
+                                body
+                        )
+                )
+                .build();
+
+        try {
+            Response httpResponse = client.newCall(request).execute();
+            if (httpResponse.code() != 200) {
+                log.error("开启评论推送任务失败,http访问非200");
+                return false;
+            }
+            LivePlayAPIResponse livePlayAPIResponse
+                    = JSON.parseObject(httpResponse.body().toString(), LivePlayAPIResponse.class);
+            if (livePlayAPIResponse.getErrNo() != 0) {
+                log.error("开启评论推送任务失败，错误信息: {}", livePlayAPIResponse.getErrorMsg());
+                return false;
+            }
+        } catch (IOException e) {
+            log.error("开启评论推送任务异常,e: {}", e.getMessage(), e);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 结束玩法
+     */
+    @PostMapping(path = "/finish_game")
+    public JsonResponse finishGameExample(HttpServletRequest httpRequest) {
+        // TODO: 玩法对局结束,开发者自行实现对局结束逻辑
+        JsonResponse response = new JsonResponse();
+        response.success("结束玩法成功");
+        return response;
+    }
+
 
     /**
      * 通过抖音云服务接受直播间数据，内网专线加速+免域名备案
@@ -50,46 +117,8 @@ public class LivePlayDemoController {
 
         // 需要将直播间数据推送到主播端,这里使用抖音云websocket能力推送
         pushDataToClientByDouyinCloudWebsocket(anchorOpenID, body);
-
         JsonResponse response = new JsonResponse();
         response.success("success");
-        return response;
-    }
-
-    /**
-     * 通过抖音云服务访问直播小玩法openAPI，内网加速+免鉴权+免access_token维护
-     */
-    @PostMapping(path = "/openapi_example")
-    public JsonResponse openAPIExample() {
-        // example: 通过java OkHttp库发起http请求，这里以开启推送任务为例，ref: https://developer.open-douyin.com/docs/resource/zh-CN/interaction/develop/server/live/danmu#%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1
-        OkHttpClient client = new OkHttpClient();
-
-        String body = new JSONObject()
-                .fluentPut("roomid", "这里输入roomid")
-                .fluentPut("appid", "这里输入appid")
-                .fluentPut("msg_type", "这里输入msg_type")
-                .toString();
-        Request request = new Request.Builder()
-                .url("http://webcast.bytedance.com/api/live_data/task/start")
-                .addHeader("Content-Type", "application/json")
-                .post(
-                        okhttp3.RequestBody.create(
-                                MediaType.get("application/json; charset=utf-8"),
-                                body
-                        )
-                )
-                .build();
-
-        JsonResponse response = new JsonResponse();
-
-        try {
-            Response httpResponse = client.newCall(request).execute();
-            log.info("openAPI http call done, response: {}", JSON.toJSONString(httpResponse));
-            response.success("success");
-        } catch (IOException e) {
-            log.error("openAPI http call exception, e: ", e);
-            response.failure(e.getMessage());
-        }
         return response;
     }
 
