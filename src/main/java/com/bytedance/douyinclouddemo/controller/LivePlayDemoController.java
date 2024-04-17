@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * 抖音云x弹幕玩法的服务端demo展示
@@ -28,40 +30,57 @@ public class LivePlayDemoController {
     @PostMapping(path = "/start_game")
     public JsonResponse callContainerExample(HttpServletRequest httpRequest) {
         // 开发者可以直接通过请求头获取直播间信息,无需自行通过token置换
+
+        // 应用id
         String appID = httpRequest.getHeader("X-TT-AppID");
+        // 直播间id
         String roomID = httpRequest.getHeader("X-Room-ID");
+        // 主播id
         String anchorOpenID = httpRequest.getHeader("X-Anchor-OpenID");
+        // 主播头像url
         String avatarUrl = httpRequest.getHeader("X-Avatar-Url");
+        // 主播昵称
         String nickName = httpRequest.getHeader("X-Nick-Name");
 
         log.info("appID: {}, roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}", appID,
                 roomID, anchorOpenID, avatarUrl, nickName);
 
-        JsonResponse response = new JsonResponse();
+
         // 调用弹幕玩法服务端API，开启直播间推送任务，开启后，开发者服务器会通过/live_data_callback接口 收到直播间玩法指令
-        boolean result = startLiveDataTask(appID, roomID);
-        if (result) {
-            response.success("开始玩法对局成功");
-        } else {
-            response.failure("开始玩法对局失败");
+        List<String> msgTypeList = new ArrayList<>();
+        msgTypeList.add("live_like");
+        msgTypeList.add("live_comment");
+        msgTypeList.add("live_gift");
+        msgTypeList.add("live_fansclub");
+
+        for (String msgType : msgTypeList) {
+            boolean result = startLiveDataTask(appID, roomID, msgType);
+            if (result) {
+                log.info("{} 推送开启成功", msgType);
+            } else {
+                log.error("{} 推送开启失败", msgType);
+            }
         }
+
+        JsonResponse response = new JsonResponse();
+        response.success("开始玩法对局成功");
         return response;
     }
 
     /**
      * startLiveDataTask: 开启推送任务：<a href="https://developer.open-douyin.com/docs/resource/zh-CN/interaction/develop/server/live/danmu#%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1">...</a>
      *
-     * @param appID  小玩法appID
-     * @param roomID 直播间ID
+     * @param appID   小玩法appID
+     * @param roomID  直播间ID
+     * @param msgType 评论/点赞/礼物/粉丝团
      */
-    private boolean startLiveDataTask(String appID, String roomID) {
+    private boolean startLiveDataTask(String appID, String roomID, String msgType) {
         // example: 通过java OkHttp库发起http请求,开发者可使用其余http访问形式
         OkHttpClient client = new OkHttpClient();
-        String liveCommentMsgType = "live_comment"; // 这里以开启评论推送任务为例
         String body = new JSONObject()
                 .fluentPut("roomid", roomID)
                 .fluentPut("appid", appID)
-                .fluentPut("msg_type", liveCommentMsgType)
+                .fluentPut("msg_type", msgType)
                 .toString();
         Request request = new Request.Builder()
                 .url("http://webcast.bytedance.com/api/live_data/task/start") // 内网专线访问小玩法openAPI,无需https协议
@@ -112,11 +131,9 @@ public class LivePlayDemoController {
      */
     @PostMapping(path = "/live_data_callback")
     public JsonResponse liveDataCallbackExample(@RequestHeader("X-Anchor-OpenID") String anchorOpenID, @RequestBody String body) {
-
-        // TODO: 开发者业务自行处理
-
         // 需要将直播间数据推送到主播端,这里使用抖音云websocket能力推送
-        pushDataToClientByDouyinCloudWebsocket(anchorOpenID, body);
+        String data = new JSONObject().fluentPut("data", body).toString();
+        pushDataToClientByDouyinCloudWebsocket(anchorOpenID, data);
         JsonResponse response = new JsonResponse();
         response.success("success");
         return response;
@@ -153,7 +170,7 @@ public class LivePlayDemoController {
      * 使用抖音云websocket网关,将数据推送到主播端
      * ref: <a href="https://developer.open-douyin.com/docs/resource/zh-CN/developer/tools/cloud/develop-guide/websocket-guide/websocket#%E4%B8%8B%E8%A1%8C%E6%B6%88%E6%81%AF%E6%8E%A8%E9%80%81">...</a>
      */
-    private void pushDataToClientByDouyinCloudWebsocket(String anchorOpenId, String body) {
+    private void pushDataToClientByDouyinCloudWebsocket(String anchorOpenId, String data) {
         // 这里通过HTTP POST请求将数据推送给抖音云网关,进而抖音云网关推送给主播端
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
@@ -163,7 +180,7 @@ public class LivePlayDemoController {
                 .post(
                         okhttp3.RequestBody.create(
                                 MediaType.parse("application/json; charset=utf-8"),
-                                body
+                                data
                         )
                 )
                 .build();
