@@ -110,7 +110,7 @@ public class LivePlayDemoController {
      * 通过内网专线会自动携带X-Anchor-OpenID字段
      * ref: <a href="https://developer.open-douyin.com/docs/resource/zh-CN/developer/tools/cloud/develop-guide/danmu-callback">...</a>
      */
-    @PostMapping(path = "/live_data_callback_example")
+    @PostMapping(path = "/live_data_callback")
     public JsonResponse liveDataCallbackExample(@RequestHeader("X-Anchor-OpenID") String anchorOpenID, @RequestBody String body) {
 
         // TODO: 开发者业务自行处理
@@ -129,7 +129,7 @@ public class LivePlayDemoController {
      * 抖音云websocket监听的回调函数,客户端建连/上行发消息都会走到该HTTP回调函数中
      * ref: <a href="https://developer.open-douyin.com/docs/resource/zh-CN/developer/tools/cloud/develop-guide/websocket-guide/websocket#%E5%BB%BA%E8%BF%9E%E8%AF%B7%E6%B1%82">...</a>
      */
-    @RequestMapping(path = "/douyincloud/websocket_callback", method = {RequestMethod.POST, RequestMethod.GET})
+    @RequestMapping(path = "/websocket_callback", method = {RequestMethod.POST, RequestMethod.GET})
     public JsonResponse websocketCallback(HttpServletRequest request) {
         String eventType = request.getHeader("x-tt-event-type");
         switch (eventType) {
