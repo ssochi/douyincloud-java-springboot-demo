@@ -96,17 +96,17 @@ public class LivePlayDemoController {
         try {
             Response httpResponse = client.newCall(request).execute();
             if (httpResponse.code() != 200) {
-                log.error("开启评论推送任务失败,http访问非200");
+                log.error("开启推送任务失败,http访问非200");
                 return false;
             }
             LivePlayAPIResponse livePlayAPIResponse
                     = JSON.parseObject(httpResponse.body().toString(), LivePlayAPIResponse.class);
             if (livePlayAPIResponse.getErrNo() != 0) {
-                log.error("开启评论推送任务失败，错误信息: {}", livePlayAPIResponse.getErrorMsg());
+                log.error("开启推送任务失败，错误信息: {}", livePlayAPIResponse.getErrorMsg());
                 return false;
             }
         } catch (IOException e) {
-            log.error("开启评论推送任务异常,e: {}", e.getMessage(), e);
+            log.error("开启推送任务异常,e: {}", e.getMessage(), e);
             return false;
         }
         return true;
