@@ -100,7 +100,7 @@ public class LivePlayDemoController {
                 return false;
             }
             LivePlayAPIResponse livePlayAPIResponse
-                    = JSON.parseObject(httpResponse.body().toString(), LivePlayAPIResponse.class);
+                    = JSON.parseObject(httpResponse.body().string(), LivePlayAPIResponse.class);
             if (livePlayAPIResponse.getErrNo() != 0) {
                 log.error("开启推送任务失败，错误信息: {}", livePlayAPIResponse.getErrorMsg());
                 return false;
