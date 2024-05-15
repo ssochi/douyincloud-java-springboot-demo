@@ -2,7 +2,9 @@ package com.bytedance.douyinclouddemo.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.TypeReference;
 import com.bytedance.douyinclouddemo.model.JsonResponse;
+import com.bytedance.douyinclouddemo.model.LiveDataModel;
 import com.bytedance.douyinclouddemo.model.LivePlayAPIResponse;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -13,9 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * 抖音云x弹幕玩法的服务端demo展示
@@ -130,10 +130,14 @@ public class LivePlayDemoController {
      * ref: <a href="https://developer.open-douyin.com/docs/resource/zh-CN/developer/tools/cloud/develop-guide/danmu-callback">...</a>
      */
     @PostMapping(path = "/live_data_callback")
-    public JsonResponse liveDataCallbackExample(@RequestHeader("X-Anchor-OpenID") String anchorOpenID, @RequestBody String body) {
-        // 需要将直播间数据推送到主播端,这里使用抖音云websocket能力推送
-        String data = new JSONObject().fluentPut("data", body).toString();
-        pushDataToClientByDouyinCloudWebsocket(anchorOpenID, data);
+    public JsonResponse liveDataCallbackExample(
+            @RequestHeader("X-Anchor-OpenID") String anchorOpenID,
+            @RequestHeader("x-msg-type") String msgType,
+            @RequestBody String body) {
+        List<LiveDataModel> liveDataModelList = JSON.parseArray(body, LiveDataModel.class);
+        liveDataModelList.forEach(liveDataModel ->
+                pushDataToClientByDouyinCloudWebsocket(anchorOpenID, liveDataModel.getMsgID(), msgType, body)
+        );
         JsonResponse response = new JsonResponse();
         response.success("success");
         return response;
@@ -170,17 +174,25 @@ public class LivePlayDemoController {
      * 使用抖音云websocket网关,将数据推送到主播端
      * ref: <a href="https://developer.open-douyin.com/docs/resource/zh-CN/developer/tools/cloud/develop-guide/websocket-guide/websocket#%E4%B8%8B%E8%A1%8C%E6%B6%88%E6%81%AF%E6%8E%A8%E9%80%81">...</a>
      */
-    private void pushDataToClientByDouyinCloudWebsocket(String anchorOpenId, String data) {
+    private void pushDataToClientByDouyinCloudWebsocket(String anchorOpenId, String msgID, String msgType, String data) {
         // 这里通过HTTP POST请求将数据推送给抖音云网关,进而抖音云网关推送给主播端
         OkHttpClient client = new OkHttpClient();
+
+        Map<String, String> bodyMap = new HashMap<>();
+        bodyMap.put("msg_id", msgID);
+        bodyMap.put("msg_type", msgType);
+        bodyMap.put("data", data);
+//        bodyMap.put("extra_data", "");
+        String bodyStr = JSON.toJSONString(bodyMap);
+
         Request request = new Request.Builder()
-                .url("http://ws-push.dycloud-api.service/ws/push_data")
+                .url("http://ws-push.dycloud-api.service/ws/live_interaction/push_data")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("X-TT-WS-OPENIDS", JSON.toJSONString(Arrays.asList(anchorOpenId)))
                 .post(
                         okhttp3.RequestBody.create(
                                 MediaType.parse("application/json; charset=utf-8"),
-                                data
+                                bodyStr
                         )
                 )
                 .build();
