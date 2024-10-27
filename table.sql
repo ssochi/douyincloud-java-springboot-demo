@@ -5,7 +5,7 @@ CREATE TABLE player (
     avatar_url VARCHAR(512) NOT NULL COMMENT '头像URL',
     score BIGINT DEFAULT 0 COMMENT '分数',
     glory BIGINT DEFAULT 0 COMMENT '荣耀值',
-    ext TEXT  DEFAULT '{}' COMMENT '扩展字段',
+    ext TEXT COMMENT '扩展字段',
     game_count INT DEFAULT 0 COMMENT  '游戏局数',
     total_payment INT DEFAULT 0 COMMENT '总付费（单位分）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
