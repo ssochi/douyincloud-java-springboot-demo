@@ -2,17 +2,23 @@ package com.bytedance.douyinclouddemo.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
 public class RedisService {
-    
+
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
-    
+
     /**
      * Set key-value with expiration
      */
@@ -25,7 +31,7 @@ public class RedisService {
             return false;
         }
     }
-    
+
     /**
      * Set key-value without expiration
      */
@@ -38,7 +44,7 @@ public class RedisService {
             return false;
         }
     }
-    
+
     /**
      * Get value by key
      */
@@ -50,7 +56,7 @@ public class RedisService {
             return null;
         }
     }
-    
+
     /**
      * Delete key
      */
@@ -62,7 +68,7 @@ public class RedisService {
             return false;
         }
     }
-    
+
     /**
      * Check if key exists
      */
@@ -74,7 +80,7 @@ public class RedisService {
             return false;
         }
     }
-    
+
     /**
      * Increment value
      */
@@ -86,7 +92,7 @@ public class RedisService {
             return 0;
         }
     }
-    
+
     /**
      * Set expiration for key
      */
@@ -96,6 +102,18 @@ public class RedisService {
         } catch (Exception e) {
             log.error("Redis expire error: ", e);
             return false;
+        }
+    }
+
+    /**
+     * Execute a Lua script
+     */
+    public <T> T execute(RedisScript<T> script, List<String> keys, Object... args) {
+        try {
+            return redisTemplate.execute(script, keys, args);
+        } catch (Exception e) {
+            log.error("Redis script execution error: ", e);
+            return null;
         }
     }
 }
