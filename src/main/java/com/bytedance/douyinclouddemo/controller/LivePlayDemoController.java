@@ -67,6 +67,30 @@ public class LivePlayDemoController {
         return response;
     }
 
+    // mock startLiveDataTask
+    @PostMapping("/mock_start_live_data_task")
+    public JsonResponse mockStartLiveDataTask(@RequestParam String appID, @RequestParam String roomID) {
+        // 调用弹幕玩法服务端API，开启直播间推送任务，开启后，开发者服务器会通过/live_data_callback接口 收到直播间玩法指令
+        List<String> msgTypeList = new ArrayList<>();
+        msgTypeList.add("live_like");
+        msgTypeList.add("live_comment");
+        msgTypeList.add("live_gift");
+        msgTypeList.add("live_fansclub");
+
+        for (String msgType : msgTypeList) {
+            boolean result = startLiveDataTask(appID, roomID, msgType);
+            if (result) {
+                log.info("{} 推送开启成功", msgType);
+            } else {
+                log.error("{} 推送开启失败", msgType);
+            }
+        }
+
+        JsonResponse response = new JsonResponse();
+        response.success("开始玩法对局成功");
+        return response;
+    }
+
     /**
      * startLiveDataTask: 开启推送任务：<a href="https://developer.open-douyin.com/docs/resource/zh-CN/interaction/develop/server/live/danmu#%E5%90%AF%E5%8A%A8%E4%BB%BB%E5%8A%A1">...</a>
      *
