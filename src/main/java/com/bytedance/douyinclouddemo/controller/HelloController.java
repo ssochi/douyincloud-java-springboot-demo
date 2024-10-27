@@ -3,8 +3,10 @@ package com.bytedance.douyinclouddemo.controller;
 import com.bytedance.douyinclouddemo.model.JsonResponse;
 import com.bytedance.douyinclouddemo.model.TextAntidirt;
 import com.bytedance.douyinclouddemo.model.TextAntidirtRequest;
+import com.bytedance.douyinclouddemo.service.RedisService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -47,14 +49,30 @@ public class HelloController {
         response.success(responseBody);
         return response;
     }
+    @Autowired
+    private RedisService redisService;
 
-    @GetMapping("/api/current-time")
-    public JsonResponse getCurrentTime() {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String currentTime = formatter.format(new Date());
-        
+    @PostMapping("/api/redis/write")
+    public JsonResponse writeToRedis(@RequestParam String key, @RequestParam String value) {
         JsonResponse response = new JsonResponse();
-        response.success(currentTime);
+        boolean result = redisService.set(key, value);
+        if (result) {
+            response.success("Successfully wrote to Redis");
+        } else {
+            response.failure("Failed to write to Redis");
+        }
+        return response;
+    }
+
+    @GetMapping("/api/redis/read")
+    public JsonResponse readFromRedis(@RequestParam String key) {
+        JsonResponse response = new JsonResponse();
+        Object value = redisService.get(key);
+        if (value != null) {
+            response.success(value.toString());
+        } else {
+            response.failure("Key not found in Redis");
+        }
         return response;
     }
 }

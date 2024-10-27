@@ -1,0 +1,101 @@
+package com.bytedance.douyinclouddemo.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.TimeUnit;
+
+@Service
+@Slf4j
+public class RedisService {
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    /**
+     * Set key-value with expiration
+     */
+    public boolean set(String key, Object value, long timeout, TimeUnit timeUnit) {
+        try {
+            redisTemplate.opsForValue().set(key, value, timeout, timeUnit);
+            return true;
+        } catch (Exception e) {
+            log.error("Redis set error: ", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Set key-value without expiration
+     */
+    public boolean set(String key, Object value) {
+        try {
+            redisTemplate.opsForValue().set(key, value);
+            return true;
+        } catch (Exception e) {
+            log.error("Redis set error: ", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Get value by key
+     */
+    public Object get(String key) {
+        try {
+            return redisTemplate.opsForValue().get(key);
+        } catch (Exception e) {
+            log.error("Redis get error: ", e);
+            return null;
+        }
+    }
+    
+    /**
+     * Delete key
+     */
+    public boolean delete(String key) {
+        try {
+            return Boolean.TRUE.equals(redisTemplate.delete(key));
+        } catch (Exception e) {
+            log.error("Redis delete error: ", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Check if key exists
+     */
+    public boolean hasKey(String key) {
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        } catch (Exception e) {
+            log.error("Redis hasKey error: ", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Increment value
+     */
+    public long increment(String key, long delta) {
+        try {
+            return redisTemplate.opsForValue().increment(key, delta);
+        } catch (Exception e) {
+            log.error("Redis increment error: ", e);
+            return 0;
+        }
+    }
+    
+    /**
+     * Set expiration for key
+     */
+    public boolean expire(String key, long timeout, TimeUnit timeUnit) {
+        try {
+            return Boolean.TRUE.equals(redisTemplate.expire(key, timeout, timeUnit));
+        } catch (Exception e) {
+            log.error("Redis expire error: ", e);
+            return false;
+        }
+    }
+}

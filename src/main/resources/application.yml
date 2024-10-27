@@ -1,3 +1,16 @@
 server:
   port: 8000
 
+spring:
+  redis:
+    host: redis-cnlfws7cbbee694ma.redis.ivolces.com
+    port: 6379
+    password: e6aDarNPvwdhfq9      # Redis服务器密码
+    database: 0
+    timeout: 10000
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1
+        max-idle: 8
+        min-idle: 0
