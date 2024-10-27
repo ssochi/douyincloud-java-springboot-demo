@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 @RestController
 public class HelloController {
@@ -43,6 +45,16 @@ public class HelloController {
         String responseBody = responseEntity.getBody();
         JsonResponse response = new JsonResponse();
         response.success(responseBody);
+        return response;
+    }
+
+    @GetMapping("/api/current-time")
+    public JsonResponse getCurrentTime() {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String currentTime = formatter.format(new Date());
+        
+        JsonResponse response = new JsonResponse();
+        response.success(currentTime);
         return response;
     }
 }
