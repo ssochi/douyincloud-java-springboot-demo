@@ -37,16 +37,16 @@ public class GameService {
     private static final String PLAYER_CACHE_PREFIX = "player:";
 
 
-    public GameEndDTO endGame(String roomID, GameResultDTO gameResultDTO) {
-        validateEndGameParams(roomID, gameResultDTO);
-        Room room = getRoomAndValidate(roomID);
+    public GameEndDTO endGame(String anchorOpenID, GameResultDTO gameResultDTO) {
+        validateEndGameParams(anchorOpenID, gameResultDTO);
+        Room room = getRoomAndValidate(anchorOpenID);
         List<String> quitPlayerList = getQuitPlayerList(room, gameResultDTO);
         List<Player> players = getAndUpdatePlayers(gameResultDTO);
-        return processEndGame(roomID, players, quitPlayerList, gameResultDTO);
+        return processEndGame(anchorOpenID, players, quitPlayerList, gameResultDTO);
     }
 
-    private void validateEndGameParams(String roomID, GameResultDTO gameResultDTO) {
-        if (roomID == null || roomID.trim().isEmpty()) {
+    private void validateEndGameParams(String anchorOpenID, GameResultDTO gameResultDTO) {
+        if (anchorOpenID == null || anchorOpenID.trim().isEmpty()) {
             throw new IllegalArgumentException("Room ID cannot be null or empty");
         }
         if (gameResultDTO == null) {
@@ -54,10 +54,10 @@ public class GameService {
         }
     }
 
-    private Room getRoomAndValidate(String roomID) {
-        Room room = roomService.getRoomInfo(roomID);
+    private Room getRoomAndValidate(String anchorOpenID) {
+        Room room = roomService.getRoomInfo(anchorOpenID);
         if (room == null) {
-            throw new IllegalStateException("Room not found: " + roomID);
+            throw new IllegalStateException("Room not found: " + anchorOpenID);
         }
         return room;
     }
@@ -103,7 +103,7 @@ public class GameService {
         }
     }
 
-    private GameEndDTO processEndGame(String roomID, List<Player> players, List<String> quitPlayerList, GameResultDTO gameResultDTO) {
+    private GameEndDTO processEndGame(String anchorOpenID, List<Player> players, List<String> quitPlayerList, GameResultDTO gameResultDTO) {
         try {
             // Update database
             playerRepository.batchUpdatePlayers(players);
@@ -153,9 +153,9 @@ public class GameService {
             }
             
             List<Player> totalRankTop = getTopPlayers();
-            roomService.closeRoom(roomID);
+            roomService.closeRoom(anchorOpenID);
             
-            log.info("Game ended successfully for room {}", roomID);
+            log.info("Game ended successfully for room {}", anchorOpenID);
 
             return GameEndDTO.builder()
                     .totalRankTop(totalRankTop)
@@ -163,7 +163,7 @@ public class GameService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Failed to end game for room {}", roomID, e);
+            log.error("Failed to end game for room {}", anchorOpenID, e);
             throw new RuntimeException("Failed to end game", e);
         }
     }
@@ -181,25 +181,25 @@ public class GameService {
      * 处理玩家加入房间
      * 
      * @param player 要加入的玩家对象
-     * @param roomID 目标房间ID
+     * @param anchorOpenID 目标房间ID
      * @throws IllegalArgumentException 如果玩家或房间ID为空/null
      */
-    public void Join(Player player, String roomID) {
-        if (player == null || roomID == null || roomID.trim().isEmpty()) {
+    public void Join(Player player, String anchorOpenID) {
+        if (player == null || anchorOpenID == null || anchorOpenID.trim().isEmpty()) {
             throw new IllegalArgumentException("Player and room ID cannot be empty or null");
         }
 
         // 获取之前的房间（如果存在）
-        String previousRoom = roomService.joinRoom(player.getUserId(), roomID);
+        String previousRoom = roomService.joinRoom(player.getUserId(), anchorOpenID);
 
         // 如果玩家在另一个房间，处理转换
-        if (previousRoom != null && !previousRoom.equals(roomID)) {
+        if (previousRoom != null && !previousRoom.equals(anchorOpenID)) {
             log.info("Player {} left room {} and joined room {}", 
-                    player.getUserId(), previousRoom, roomID);
+                    player.getUserId(), previousRoom, anchorOpenID);
             // 未来实现：通知之前的房间玩家离开
         }
 
-        log.info("Player {} joined room {}", player.getUserId(), roomID);
+        log.info("Player {} joined room {}", player.getUserId(), anchorOpenID);
     }
 
     /**

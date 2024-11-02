@@ -24,6 +24,7 @@ public class LivePlayController {
      */
     @PostMapping("/start_game")
     public JsonResponse startGame(HttpServletRequest httpRequest) {
+        log.info("enter start game");
         GameRequestHeader header = GameRequestHeader.from(httpRequest);
         header.validate();
 
@@ -43,6 +44,7 @@ public class LivePlayController {
      */
     @PostMapping(path = "/finish_game")
     public JsonResponse finishGame(HttpServletRequest httpRequest) {
+        log.info("enter finish game");
         GameRequestHeader header = GameRequestHeader.from(httpRequest);
         header.validate();
 
@@ -65,7 +67,7 @@ public class LivePlayController {
             @RequestHeader(Constants.Headers.ANCHOR_OPEN_ID) String anchorOpenID,
             @RequestHeader(Constants.Headers.MSG_TYPE) String msgType,
             @RequestBody String body) {
-        
+        log.info("enter live data callback");
         livePlayService.handleLiveDataCallback(anchorOpenID, msgType, body);
         
         JsonResponse response = new JsonResponse();
@@ -78,6 +80,7 @@ public class LivePlayController {
      */
     @RequestMapping(path = "/websocket_callback", method = {RequestMethod.POST, RequestMethod.GET})
     public JsonResponse websocketCallback(HttpServletRequest request) {
+        log.info("enter websocket data callback");
         String eventType = request.getHeader(Constants.Headers.EVENT_TYPE);
         String result = livePlayService.handleWebsocketCallback(eventType);
         

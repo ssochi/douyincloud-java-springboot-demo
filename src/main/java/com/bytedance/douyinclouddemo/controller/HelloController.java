@@ -6,6 +6,7 @@ import com.bytedance.douyinclouddemo.model.TextAntidirtRequest;
 import com.bytedance.douyinclouddemo.service.RedisService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @RestController
+@Slf4j
 public class HelloController {
 
     @GetMapping("/api/get_open_id")
@@ -66,6 +68,7 @@ public class HelloController {
 
     @GetMapping("/api/redis/read")
     public JsonResponse readFromRedis(@RequestParam String key) {
+        log.info("enter api redis read");
         JsonResponse response = new JsonResponse();
         Object value = redisService.get(key);
         if (value != null) {

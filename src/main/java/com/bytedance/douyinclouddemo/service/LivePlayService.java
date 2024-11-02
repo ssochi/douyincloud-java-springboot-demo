@@ -62,7 +62,7 @@ public class LivePlayService {
         }
 
         try {
-            roomService.createRoom(header.getRoomID());
+            roomService.createRoom(header.getAnchorOpenID());
         } catch (Exception e) {
             log.error("Failed to create room for anchor: {}", header.getAnchorOpenID(), e);
             allSuccess = false;
@@ -83,7 +83,7 @@ public class LivePlayService {
 
         // 清理房间数据
         try {
-            roomService.closeRoom(header.getRoomID());
+            roomService.closeRoom(header.getAnchorOpenID());
         } catch (Exception e) {
             log.error("Failed to close room for anchor: {}", header.getAnchorOpenID(), e);
         }
