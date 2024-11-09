@@ -3,6 +3,7 @@ server:
 
 spring:
   redis:
+    # host: dycloud-local-proxy
     host: redis-cnlfws7cbbee694ma.redis.ivolces.com
     port: 6379
     password: e6aDarNPvwdhfq9      # Redis服务器密码
@@ -16,6 +17,7 @@ spring:
         min-idle: 0
 
   datasource:
+    # url: jdbc:mysql://dycloud-local-proxy:3306/star?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
     url: jdbc:mysql://mysql75c46c48415a.rds.ivolces.com:3306/star?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
     username: yyyjsz
     password: e6aDarNPvwdhfq9

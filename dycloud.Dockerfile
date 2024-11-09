@@ -1,0 +1,11 @@
+# 基础镜像，按需替换java版本镜像
+FROM openjdk:17-oraclelinux8
+# 环境变量,从云端dev环境拉取,需要手动填充密码等相关信息
+ENV MYSQL_PASSWORD=e6aDarNPvwdhfq9
+ENV MYSQL_ADDRESS=dycloud-local-proxy:3306
+ENV SERVICE_ID=1kfrkmcy8ka4f
+ENV CLOUD_ENV=DEV
+ENV REDIS_USERNAME=default
+ENV REDIS_PASSWORD=e6aDarNPvwdhfq9
+ENV REDIS_ADDRESS=dycloud-local-proxy:6379
+ENV MYSQL_USERNAME=yyyjsz

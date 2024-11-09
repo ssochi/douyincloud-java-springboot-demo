@@ -67,7 +67,8 @@ public class LivePlayController {
             @RequestHeader(Constants.Headers.ANCHOR_OPEN_ID) String anchorOpenID,
             @RequestHeader(Constants.Headers.MSG_TYPE) String msgType,
             @RequestBody String body) {
-        log.info("enter live data callback");
+        log.info("enter live data callback, anchorOpenID: {}, msgType: {}, body: {}", 
+                anchorOpenID, msgType, body);
         livePlayService.handleLiveDataCallback(anchorOpenID, msgType, body);
         
         JsonResponse response = new JsonResponse();

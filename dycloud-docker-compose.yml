@@ -1,0 +1,24 @@
+services:
+  star-srv:
+    build:
+      context: .
+      dockerfile: dycloud.Dockerfile
+    container_name: star-srv
+    extra_hosts:
+      - config-center.dycloud.run:17.100.0.3
+      - developer.toutiao.com:17.100.0.3
+      - open.douyin.com:17.100.0.3
+      - webcast.bytedance.com:17.100.0.3
+      - ws-push.dycloud-api.service:17.100.0.4
+    networks:
+      dycloud0:
+        ipv4_address: 17.100.0.2
+    ports:
+      - mode: ingress
+        target: 8000
+        published: "8000"
+        protocol: tcp
+networks:
+  dycloud0:
+    name: dycloud0
+    external: true
