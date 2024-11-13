@@ -1,9 +1,13 @@
 package com.bytedance.douyinclouddemo.controller;
 
+import com.bytedance.douyinclouddemo.entity.Player;
 import com.bytedance.douyinclouddemo.model.JsonResponse;
+import com.bytedance.douyinclouddemo.model.Room;
 import com.bytedance.douyinclouddemo.model.TextAntidirt;
 import com.bytedance.douyinclouddemo.model.TextAntidirtRequest;
+import com.bytedance.douyinclouddemo.service.PlayerService;
 import com.bytedance.douyinclouddemo.service.RedisService;
+import com.bytedance.douyinclouddemo.service.RoomService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +80,83 @@ public class HelloController {
         } else {
             response.failure("Key not found in Redis");
         }
+        return response;
+    }
+
+    @Autowired
+    private PlayerService playerService;
+    
+    @Autowired
+    private RoomService roomService;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    /**
+     * 查询玩家信息
+     */
+    @GetMapping("/api/player/{userId}")
+    public JsonResponse getPlayer(@PathVariable String userId) {
+        log.info("Getting player info for userId: {}", userId);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            Player player = playerService.findByUserId(userId);
+            if (player != null) {
+                response.success(objectMapper.writeValueAsString(player));
+            } else {
+                response.failure("Player not found");
+            }
+        } catch (Exception e) {
+            log.error("Failed to get player info for userId: {}", userId, e);
+            response.failure("Error getting player info: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 查询房间信息
+     */
+    @GetMapping("/api/room/{roomId}")
+    public JsonResponse getRoom(@PathVariable String roomId) {
+        log.info("Getting room info for roomId: {}", roomId);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            Room room = roomService.getRoomInfo(roomId);
+            if (room != null) {
+                response.success(objectMapper.writeValueAsString(room));
+            } else {
+                response.failure("Room not found");
+            }
+        } catch (Exception e) {
+            log.error("Failed to get room info for roomId: {}", roomId, e);
+            response.failure("Error getting room info: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 删除房间
+     */
+    @DeleteMapping("/api/room/{roomId}")
+    public JsonResponse deleteRoom(@PathVariable String roomId) {
+        log.info("Deleting room: {}", roomId);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            Room closedRoom = roomService.closeRoom(roomId);
+            if (closedRoom != null) {
+                response.success("Room successfully closed");
+            } else {
+                response.failure("Room not found or already closed");
+            }
+        } catch (Exception e) {
+            log.error("Failed to close room: {}", roomId, e);
+            response.failure("Error closing room: " + e.getMessage());
+        }
+        
         return response;
     }
 }

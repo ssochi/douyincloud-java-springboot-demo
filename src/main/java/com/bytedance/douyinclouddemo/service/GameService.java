@@ -4,6 +4,7 @@ import com.bytedance.douyinclouddemo.dto.GameEndDTO;
 import com.bytedance.douyinclouddemo.dto.GameResultDTO;
 import com.bytedance.douyinclouddemo.dto.PlayerEndInfo;
 import com.bytedance.douyinclouddemo.entity.Player;
+import com.bytedance.douyinclouddemo.model.LiveCommentModel;
 import com.bytedance.douyinclouddemo.model.Room;
 import com.bytedance.douyinclouddemo.repository.PlayerRepository;
 import com.bytedance.douyinclouddemo.utils.KVPair;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +29,8 @@ public class GameService {
     @Autowired
     PlayerRepository playerRepository;
     @Autowired
+    PlayerService playerService;
+    @Autowired
     RoomService roomService;
     @Autowired
     RankService rankService;
@@ -41,7 +45,13 @@ public class GameService {
         validateEndGameParams(anchorOpenID, gameResultDTO);
         Room room = getRoomAndValidate(anchorOpenID);
         List<String> quitPlayerList = getQuitPlayerList(room, gameResultDTO);
-        List<Player> players = getAndUpdatePlayers(gameResultDTO);
+        log.info("quit player : " + quitPlayerList);
+
+        for (String playerID : quitPlayerList) {
+            gameResultDTO.getScoreMap().remove(playerID);
+        }
+
+        List<Player> players = playerService.findByUserIdDirectly(new ArrayList<>(gameResultDTO.getScoreMap().keySet()));
         return processEndGame(anchorOpenID, players, quitPlayerList, gameResultDTO);
     }
 
@@ -65,22 +75,18 @@ public class GameService {
     private List<String> getQuitPlayerList(Room room, GameResultDTO gameResultDTO) {
         Set<String> roomPlayers = new HashSet<>(room.getPlayerList());
         List<String> quitPlayerList = new ArrayList<>();
-        
-        for (String playerId : roomPlayers) {
-            if (!gameResultDTO.getScoreMap().containsKey(playerId)) {
-                quitPlayerList.add(playerId);
-                log.info("Player {} quit during the game", playerId);
+
+        gameResultDTO.getScoreMap().forEach((playerID,score) -> {
+            if(!roomPlayers.contains(playerID)){
+                quitPlayerList.add(playerID);
+                log.info("Player {} quit during the game", playerID);
             }
-        }
+        });
         return quitPlayerList;
     }
 
     private List<Player> getAndUpdatePlayers(GameResultDTO gameResultDTO) {
-        List<Player> players = playerRepository.findAllById(
-            gameResultDTO.getScoreMap().keySet().stream()
-                .map(Integer::parseInt)
-                .collect(Collectors.toList())
-        );
+        List<Player> players = playerService.findByUserIdDirectly(new ArrayList<>(gameResultDTO.getScoreMap().keySet()));
 
         for (Player player : players) {
             updatePlayerStats(player, gameResultDTO.getScoreMap().get(player.getUserId()));
@@ -107,6 +113,10 @@ public class GameService {
         try {
             // Update database
             playerRepository.batchUpdatePlayers(players);
+            playerService.clearPlayerCache(players.stream().map(Player::getUserId).collect(Collectors.toList()));
+            for (Player player : players) {
+                updatePlayerStats(player, gameResultDTO.getScoreMap().get(player.getUserId()));
+            }
             
             // Get initial rankings for calculating rank changes
             Map<String, Integer> initialRanks = rankService.getPlayerRanks(
@@ -118,9 +128,6 @@ public class GameService {
             
             // Process active players
             for (Player player : players) {
-                // Clear cache
-                redis.delete(PLAYER_CACHE_PREFIX + player.getUserId());
-                
                 // Get score from gameResultDTO
                 Long deltaScore = gameResultDTO.getScoreMap().get(player.getUserId());
                 Long deltaGlory = deltaScore != null ? deltaScore / 150 : 0L;
@@ -137,10 +144,10 @@ public class GameService {
                         .isQuit(false)
                         .build());
             }
-            
-            // Process quit players
-            for (String quitPlayerId : quitPlayerList) {
-                Player quitPlayer = playerRepository.findByUserId(quitPlayerId).orElse(null);
+
+
+            List<Player> quitPlayers = playerService.findByUserId(quitPlayerList);
+            for (Player quitPlayer : quitPlayers) {
                 if (quitPlayer != null) {
                     playerEndInfos.add(PlayerEndInfo.builder()
                             .player(quitPlayer)
@@ -151,7 +158,7 @@ public class GameService {
                             .build());
                 }
             }
-            
+
             List<Player> totalRankTop = getTopPlayers();
             roomService.closeRoom(anchorOpenID);
             
@@ -170,9 +177,9 @@ public class GameService {
 
     private List<Player> getTopPlayers() {
         List<KVPair<String, Double>> topRankings = rankService.getTopPlayers(10);
-        return playerRepository.findAllById(
-            topRankings.stream()
-                .map(entry -> Integer.parseInt(entry.getKey()))
+        return playerService.findByUserId(
+                topRankings.stream()
+                .map(KVPair::getKey)
                 .collect(Collectors.toList())
         );
     }
@@ -180,12 +187,23 @@ public class GameService {
     /**
      * 处理玩家加入房间
      * 
-     * @param player 要加入的玩家对象
      * @param anchorOpenID 目标房间ID
+     * @param comment 评论消息
      * @throws IllegalArgumentException 如果玩家或房间ID为空/null
      */
-    public void Join(Player player, String anchorOpenID) {
-        if (player == null || anchorOpenID == null || anchorOpenID.trim().isEmpty()) {
+    public Player Join(String anchorOpenID, LiveCommentModel comment) {
+
+        Player player = playerService.findByUserId(comment.getSecOpenid());
+        if (player == null) {
+            player = new Player();
+            player.setUserId(comment.getSecOpenid());
+            player.setAvatarUrl(comment.getAvatarUrl());
+            player.setUserName(comment.getNickname());
+            player.setCreatedAt(LocalDateTime.now());
+            playerService.createPlayer(player);
+        }
+
+        if (anchorOpenID == null || anchorOpenID.trim().isEmpty()) {
             throw new IllegalArgumentException("Player and room ID cannot be empty or null");
         }
 
@@ -200,6 +218,7 @@ public class GameService {
         }
 
         log.info("Player {} joined room {}", player.getUserId(), anchorOpenID);
+        return player;
     }
 
     /**
@@ -222,15 +241,8 @@ public class GameService {
         }
 
         try {
-            // 更新玩家对象中的荣耀
             player.setGlory(player.getGlory() - glory);
-            
-            // 更新数据库
-            playerRepository.save(player);
-            
-            // 从缓存中移除以强制刷新
-            redis.delete(PLAYER_CACHE_PREFIX + player.getUserId());
-            
+            playerService.updatePlayer(player);
             log.info("Successfully used {} glory for player {}", glory, player.getUserId());
             return true;
         } catch (Exception e) {

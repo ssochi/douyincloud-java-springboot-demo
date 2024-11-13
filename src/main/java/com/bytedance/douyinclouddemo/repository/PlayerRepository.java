@@ -24,4 +24,11 @@ public interface PlayerRepository extends JpaRepository<Player, Integer> {
         List<Player> rst = saveAll(players);
         return rst.size();
     }
+
+    /**
+     * 通过多个userID查找玩家列表
+     */
+    @Query("SELECT p FROM Player p WHERE p.userId IN :userIds")
+    List<Player> findByUserIdIn(@Param("userIds") List<String> userIds);
+
 }

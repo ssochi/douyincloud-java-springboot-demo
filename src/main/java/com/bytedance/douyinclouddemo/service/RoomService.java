@@ -60,6 +60,7 @@ public class RoomService {
             room.setPlayerList(new ArrayList<>());
             room.setCreatedAt(currentTime);
             room.setUpdatedAt(currentTime);
+            log.info("create room " + roomID + "success");
             return room;
         } catch (Exception e) {
             log.error("Failed to create room for room: {}", roomID, e);

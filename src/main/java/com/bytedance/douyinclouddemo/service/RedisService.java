@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,6 +19,8 @@ public class RedisService {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * Set key-value with expiration
@@ -114,6 +117,49 @@ public class RedisService {
         } catch (Exception e) {
             log.error("Redis script execution error: ", e);
             return null;
+        }
+    }
+
+    /**
+     * Set object as JSON string
+     */
+    public boolean setJson(String key, Object value, long timeout, TimeUnit timeUnit) {
+        try {
+            String jsonValue = objectMapper.writeValueAsString(value);
+            redisTemplate.opsForValue().set(key, jsonValue, timeout, timeUnit);
+            return true;
+        } catch (Exception e) {
+            log.error("Redis setJson error: ", e);
+            return false;
+        }
+    }
+
+    /**
+     * Get JSON and convert to specified class
+     */
+    public <T> T getJson(String key, Class<T> clazz) {
+        try {
+            String jsonValue = (String) redisTemplate.opsForValue().get(key);
+            if (jsonValue == null) {
+                return null;
+            }
+            return objectMapper.readValue(jsonValue, clazz);
+        } catch (Exception e) {
+            log.error("Redis getJson error: ", e);
+            return null;
+        }
+    }
+
+    /**
+     * Delete multiple keys
+     */
+    public long deleteAll(List<String> keys) {
+        try {
+            Long count = redisTemplate.delete(keys);
+            return count != null ? count : 0;
+        } catch (Exception e) {
+            log.error("Redis deleteAll error: ", e);
+            return 0;
         }
     }
 }

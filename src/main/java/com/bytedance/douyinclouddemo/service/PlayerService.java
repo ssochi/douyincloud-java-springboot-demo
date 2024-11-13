@@ -6,20 +6,112 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 @Service
 public class PlayerService {
+    
+    private static final String PLAYER_CACHE_PREFIX = "player:";
+    private static final long CACHE_DURATION = 30; // 30 minutes cache
     
     @Autowired
     private PlayerRepository playerRepository;
     
+    @Autowired
+    private RedisService redisService;
+    
     @Transactional
     public Player createPlayer(Player player) {
-        return playerRepository.save(player);
+        Player savedPlayer = playerRepository.save(player);
+        // Cache the new player as JSON
+        redisService.setJson(PLAYER_CACHE_PREFIX + player.getUserId(), 
+                           savedPlayer, 
+                           CACHE_DURATION, 
+                           TimeUnit.MINUTES);
+        return savedPlayer;
     }
     
     public Player findByUserId(String userId) {
-        return playerRepository.findByUserId(userId)
-            .orElseThrow(() -> new RuntimeException("Player not found"));
+        List<String> userIds = new ArrayList<>();
+        userIds.add(userId);
+
+        List<Player> byUserId = findByUserId(userIds);
+        if (byUserId.size() == 0 ){
+            return null;
+        }
+
+        return byUserId.get(0);
     }
 
+    public List<Player> findByUserId(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Player> result = new ArrayList<>();
+        List<String> missingUserIds = new ArrayList<>();
+
+        // Batch query Redis for all keys
+        for (String userId : userIds) {
+            Player player = redisService.getJson(PLAYER_CACHE_PREFIX + userId, Player.class);
+            if (player != null) {
+                result.add(player);
+            } else {
+                missingUserIds.add(userId);
+            }
+        }
+
+        // If there are any missing players, query them from DB
+        if (!missingUserIds.isEmpty()) {
+            List<Player> dbPlayers = playerRepository.findByUserIdIn(missingUserIds);
+            
+            // Cache the players that were found in DB
+            for (Player player : dbPlayers) {
+                redisService.setJson(PLAYER_CACHE_PREFIX + player.getUserId(), 
+                                   player, 
+                                   CACHE_DURATION, 
+                                   TimeUnit.MINUTES);
+            }
+            result.addAll(dbPlayers);
+        }
+
+        return result;
+    }
+
+    public List<Player> findByUserIdDirectly(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return playerRepository.findByUserIdIn(userIds);
+    }
+    
+    @Transactional
+    public Player updatePlayer(Player player) {
+        Player updatedPlayer = playerRepository.save(player);
+        // Update cache with JSON
+        redisService.setJson(PLAYER_CACHE_PREFIX + player.getUserId(), 
+                           updatedPlayer, 
+                           CACHE_DURATION, 
+                           TimeUnit.MINUTES);
+        return updatedPlayer;
+    }
+    
+    public void clearPlayerCache(String userId) {
+        redisService.delete(PLAYER_CACHE_PREFIX + userId);
+    }
+
+    public void clearPlayerCache(List<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        
+        List<String> keys = userIds.stream()
+            .map(userId -> PLAYER_CACHE_PREFIX + userId)
+                    .collect(Collectors.toList());
+        
+        redisService.deleteAll(keys);
+    }
 }

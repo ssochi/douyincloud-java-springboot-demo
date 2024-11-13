@@ -3,9 +3,11 @@ package com.bytedance.douyinclouddemo.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.bytedance.douyinclouddemo.constant.Constants;
+import com.bytedance.douyinclouddemo.dto.GameEndDTO;
 import com.bytedance.douyinclouddemo.dto.GameRequestHeader;
-import com.bytedance.douyinclouddemo.model.LiveDataModel;
-import com.bytedance.douyinclouddemo.model.LivePlayAPIResponse;
+import com.bytedance.douyinclouddemo.dto.GameResultDTO;
+import com.bytedance.douyinclouddemo.entity.Player;
+import com.bytedance.douyinclouddemo.model.*;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -31,6 +33,8 @@ public class LivePlayService {
 
     @Autowired
     RoomService roomService;
+    @Autowired
+    GameService gameService;
 
     /**
      * 开始游戏，初始化直播间数据推送
@@ -42,6 +46,13 @@ public class LivePlayService {
         log.info("Starting game - appID: {}, roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}", 
                 header.getAppID(), header.getRoomID(), header.getAnchorOpenID(), 
                 header.getAvatarUrl(), header.getNickName());
+
+        try {
+            roomService.createRoom(header.getAnchorOpenID());
+        } catch (Exception e) {
+            log.error("Failed to create room for anchor: {}", header.getAnchorOpenID(), e);
+            throw e;
+        }
 
         List<String> msgTypeList = Arrays.asList(
             Constants.MessageTypes.LIVE_LIKE,
@@ -61,14 +72,19 @@ public class LivePlayService {
             }
         }
 
-        try {
-            roomService.createRoom(header.getAnchorOpenID());
-        } catch (Exception e) {
-            log.error("Failed to create room for anchor: {}", header.getAnchorOpenID(), e);
-            allSuccess = false;
-        }
-
         return allSuccess;
+    }
+
+    /**
+     * 处理游戏结束并返回结果
+     */
+    public GameEndDTO processGameEnd(String anchorOpenID, GameResultDTO gameResultDTO) {
+        try {
+            return gameService.endGame(anchorOpenID, gameResultDTO);
+        } catch (Exception e) {
+            log.error("Failed to process game end for anchor: {}", anchorOpenID, e);
+            throw new RuntimeException("Failed to process game end", e);
+        }
     }
 
     /**
@@ -149,10 +165,40 @@ public class LivePlayService {
             return;
         }
 
-        dataModels.forEach(model -> 
-            pushDataToClientByWebsocket(anchorOpenID, model.getMsgID(), msgType, body)
-        );
+        try {
+            switch (msgType) {
+                case Constants.MessageTypes.LIVE_GIFT:
+                    List<LiveGiftModel> giftModels = JSON.parseArray(body, LiveGiftModel.class);
+                    giftModels.forEach(model ->
+                            pushDataToClientByWebsocket(anchorOpenID, model.getMsgId(), msgType, JSON.toJSONString(model))
+                    );
+                    break;
+
+                case Constants.MessageTypes.LIVE_COMMENT:
+                    List<LiveCommentModel> commentModels = JSON.parseArray(body, LiveCommentModel.class);
+                    DealComment(anchorOpenID,commentModels);
+                    commentModels.forEach(model ->
+                            pushDataToClientByWebsocket(anchorOpenID, model.getMsgId(), msgType, JSON.toJSONString(model))
+                    );
+                    break;
+
+                default:
+                    log.warn("Unsupported message type: {}", msgType);
+            }
+        } catch (Exception e) {
+            log.error("Failed to parse live data callback for msgType: {}", msgType, e);
+        }
     }
+
+    private void DealComment(String anchorOpenID, List<LiveCommentModel> commentModels) {
+        for (LiveCommentModel commentModel : commentModels) {
+            if ("j".equals(commentModel.getContent())){
+                Player player = gameService.Join(anchorOpenID,commentModel);
+                commentModel.setPlayer(player);
+            }
+        }
+    }
+
 
     /**
      * 通过WebSocket推送数据到客户端
