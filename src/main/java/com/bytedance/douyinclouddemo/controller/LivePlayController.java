@@ -73,7 +73,7 @@ public class LivePlayController {
         log.info("enter finish game with result: {}", gameResultDTO);
         GameRequestHeader header = GameRequestHeader.from(httpRequest);
         header.validate();
-
+        // TODO 必须要做幂等，不然寄
         JsonResponse resp = new JsonResponse();
 
         try {

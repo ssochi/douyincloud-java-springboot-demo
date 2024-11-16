@@ -117,7 +117,7 @@ public class RoomService {
     }
 
     /**
-     * 关闭房间并清理相关数据
+     * 只删掉房间中的玩家信息
      * 
      * @param roomID 房间ID
      * @return 被关闭的房间信息，如果房间不存在返回null
@@ -148,8 +148,8 @@ public class RoomService {
                         operations.delete(USER_ROOM_KEY_PREFIX + userID);
                     }
                     operations.delete(playersKey);
-                    operations.delete(createTimeKey);
-                    operations.delete(updateTimeKey);
+//                    operations.delete(createTimeKey);
+//                    operations.delete(updateTimeKey);
                     return operations.exec();
                 }
             });
