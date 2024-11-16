@@ -2,7 +2,10 @@ package com.bytedance.douyinclouddemo.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 import com.bytedance.douyinclouddemo.model.Room;
@@ -27,7 +30,7 @@ public class RoomService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 创建房间或获取已存在的房间
+     * ���建房间或获取已存在的房间
      * 
      * @param roomID 房间ID
      * @return 房间信息，如果创建失败返回null
@@ -49,18 +52,25 @@ public class RoomService {
 
         try {
             long currentTime = System.currentTimeMillis();
-            // 原子性操作，设置创建时间和更新时间
-            redisTemplate.multi();
-            redisTemplate.opsForValue().set(createTimeKey, String.valueOf(currentTime));
-            redisTemplate.opsForValue().set(updateTimeKey, String.valueOf(currentTime));
-            redisTemplate.exec();
+            
+            // 使用 redisTemplate.execute 来确保事务的原子性
+            redisTemplate.execute(new SessionCallback<List<Object>>() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public List<Object> execute(RedisOperations operations) throws DataAccessException {
+                    operations.multi();
+                    operations.opsForValue().set(createTimeKey, String.valueOf(currentTime));
+                    operations.opsForValue().set(updateTimeKey, String.valueOf(currentTime));
+                    return operations.exec();
+                }
+            });
 
             Room room = new Room();
             room.setAnchorOpenID(roomID);
             room.setPlayerList(new ArrayList<>());
             room.setCreatedAt(currentTime);
             room.setUpdatedAt(currentTime);
-            log.info("create room " + roomID + "success");
+            log.info("create room " + roomID + " success");
             return room;
         } catch (Exception e) {
             log.error("Failed to create room for room: {}", roomID, e);
@@ -128,15 +138,21 @@ public class RoomService {
             String createTimeKey = ROOM_CREATE_TIME_KEY_PREFIX + roomID;
             String updateTimeKey = ROOM_UPDATE_TIME_KEY_PREFIX + roomID;
 
-            // 原子性操作，清理所有相关数据
-            redisTemplate.multi();
-            for (String userID : room.getPlayerList()) {
-                redisTemplate.delete(USER_ROOM_KEY_PREFIX + userID);
-            }
-            redisTemplate.delete(playersKey);
-            redisTemplate.delete(createTimeKey);
-            redisTemplate.delete(updateTimeKey);
-            redisTemplate.exec();
+            // 使用 SessionCallback 来确保事务的原子性
+            redisTemplate.execute(new SessionCallback<List<Object>>() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public List<Object> execute(RedisOperations operations) throws DataAccessException {
+                    operations.multi();
+                    for (String userID : room.getPlayerList()) {
+                        operations.delete(USER_ROOM_KEY_PREFIX + userID);
+                    }
+                    operations.delete(playersKey);
+                    operations.delete(createTimeKey);
+                    operations.delete(updateTimeKey);
+                    return operations.exec();
+                }
+            });
 
             return room;
         } catch (Exception e) {
