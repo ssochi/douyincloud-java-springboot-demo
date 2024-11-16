@@ -24,7 +24,7 @@ public class LivePlayController {
     }
 
     /**
-     * 开始玩法对局
+     * 开始一局对战
      */
     @PostMapping("/start_game")
     public JsonResponse startGame(HttpServletRequest httpRequest) {
@@ -33,6 +33,26 @@ public class LivePlayController {
         header.validate();
 
         boolean success = livePlayService.startGame(header);
+
+        JsonResponse response = new JsonResponse();
+        if (success) {
+            response.success("开始玩法对局成功");
+        } else {
+            response.failure("开始玩法对局失败");
+        }
+        return response;
+    }
+
+    /**
+     * 开播
+     */
+    @PostMapping("/start_live")
+    public JsonResponse startLive(HttpServletRequest httpRequest) {
+        log.info("enter start live");
+        GameRequestHeader header = GameRequestHeader.from(httpRequest);
+        header.validate();
+
+        boolean success = livePlayService.startLive(header);
         
         JsonResponse response = new JsonResponse();
         if (success) {

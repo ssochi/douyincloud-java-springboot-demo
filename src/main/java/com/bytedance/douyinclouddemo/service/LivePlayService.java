@@ -36,23 +36,32 @@ public class LivePlayService {
     @Autowired
     GameService gameService;
 
-    /**
-     * 开始游戏，初始化直播间数据推送
-     *
-     * @param header 游戏请求头信息
-     * @return 是否成功启动所有推送任务
-     */
     public boolean startGame(GameRequestHeader header) {
-        log.info("Starting game - appID: {}, roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}", 
-                header.getAppID(), header.getRoomID(), header.getAnchorOpenID(), 
+        log.info("Starting game - appID: {}, roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}",
+                header.getAppID(), header.getRoomID(), header.getAnchorOpenID(),
                 header.getAvatarUrl(), header.getNickName());
-
         try {
             roomService.createRoom(header.getAnchorOpenID());
         } catch (Exception e) {
             log.error("Failed to create room for anchor: {}", header.getAnchorOpenID(), e);
             throw e;
         }
+
+        return true;
+    }
+
+
+    /**
+     * 开始游戏，初始化直播间数据推送
+     *
+     * @param header 游戏请求头信息
+     * @return 是否成功启动所有推送任务
+     */
+    public boolean startLive(GameRequestHeader header) {
+        log.info("Starting live - appID: {}, roomID: {}, anchorOpenID: {}, avatarUrl: {}, nickName: {}",
+                header.getAppID(), header.getRoomID(), header.getAnchorOpenID(), 
+                header.getAvatarUrl(), header.getNickName());
+
 
         List<String> msgTypeList = Arrays.asList(
             Constants.MessageTypes.LIVE_LIKE,
