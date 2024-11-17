@@ -21,6 +21,9 @@ public class RoomService {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
+    @Autowired
+    private RankService rankService;
+
     // Redis key前缀常量
     private static final String ROOM_PLAYERS_KEY_PREFIX = "room:players:";      // 房间玩家集合的key前缀
     private static final String ROOM_CREATE_TIME_KEY_PREFIX = "room:create_time:"; // 房间创建时间的key前缀
@@ -30,7 +33,7 @@ public class RoomService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * ���建房间或获取已存在的房间
+     * 建房间或获取已存在的房间
      * 
      * @param roomID 房间ID
      * @return 房间信息，如果创建失败返回null

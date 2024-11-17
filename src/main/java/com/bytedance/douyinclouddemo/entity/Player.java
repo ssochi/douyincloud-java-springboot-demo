@@ -28,7 +28,8 @@ public class Player {
     private Long glory = 0L;
 
     @Column(name = "ext", columnDefinition = "TEXT")
-    private String ext = "{}";
+    @Convert(converter = PlayerExtConverter.class)
+    private PlayerExt ext = new PlayerExt();
 
     @Column(name = "game_count")
     private Integer gameCount = 0;

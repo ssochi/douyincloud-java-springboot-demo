@@ -1,6 +1,7 @@
 package com.bytedance.douyinclouddemo.service;
 
 import com.bytedance.douyinclouddemo.entity.Player;
+import com.bytedance.douyinclouddemo.entity.PlayerExt;
 import com.bytedance.douyinclouddemo.repository.PlayerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 public class PlayerService {
@@ -22,6 +24,9 @@ public class PlayerService {
     
     @Autowired
     private RedisService redisService;
+    
+    @Autowired
+    private RankService rankService;
     
     @Transactional
     public Player createPlayer(Player player) {
@@ -78,6 +83,20 @@ public class PlayerService {
             result.addAll(dbPlayers);
         }
 
+        // Add rank information to all players
+        Map<String, Integer> ranks = rankService.getPlayerRanks(
+            result.stream()
+                .map(Player::getUserId)
+                .collect(Collectors.toList())
+        );
+        
+        for (Player player : result) {
+            if (player.getExt() == null) {
+                player.setExt(new PlayerExt());
+            }
+            player.getExt().setRank(ranks.getOrDefault(player.getUserId(), 9999));
+        }
+
         return result;
     }
 
@@ -85,7 +104,23 @@ public class PlayerService {
         if (userIds == null || userIds.isEmpty()) {
             return new ArrayList<>();
         }
-        return playerRepository.findByUserIdIn(userIds);
+        List<Player> players = playerRepository.findByUserIdIn(userIds);
+        
+        // Add rank information to all players
+        Map<String, Integer> ranks = rankService.getPlayerRanks(
+            players.stream()
+                .map(Player::getUserId)
+                .collect(Collectors.toList())
+        );
+        
+        for (Player player : players) {
+            if (player.getExt() == null) {
+                player.setExt(new PlayerExt());
+            }
+            player.getExt().setRank(ranks.getOrDefault(player.getUserId(), 9999));
+        }
+        
+        return players;
     }
     
     @Transactional
