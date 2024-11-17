@@ -46,7 +46,7 @@ public class RoomService {
         String updateTimeKey = ROOM_UPDATE_TIME_KEY_PREFIX + roomID;
         
         // 如果房间已存在，直接返回房间信息
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(playersKey))) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(createTimeKey))) {
             return getRoomInfo(roomID);
         }
 
@@ -99,7 +99,7 @@ public class RoomService {
             String createTime = redisTemplate.opsForValue().get(createTimeKey);
             String updateTime = redisTemplate.opsForValue().get(updateTimeKey);
 
-            if (players == null || createTime == null || updateTime == null) {
+            if (createTime == null) {
                 return null;
             }
 
