@@ -111,13 +111,13 @@ public class GameService {
 
     private GameEndDTO processEndGame(String anchorOpenID, List<Player> players, List<String> quitPlayerList, GameResultDTO gameResultDTO) {
         try {
-            // Update database
-            playerRepository.batchUpdatePlayers(players);
-            playerService.clearPlayerCache(players.stream().map(Player::getUserId).collect(Collectors.toList()));
             for (Player player : players) {
                 updatePlayerStats(player, gameResultDTO.getScoreMap().get(player.getUserId()));
             }
-            
+            // Update database
+            playerRepository.batchUpdatePlayers(players);
+            playerService.clearPlayerCache(players.stream().map(Player::getUserId).collect(Collectors.toList()));
+
             // Get initial rankings for calculating rank changes
             Map<String, Integer> initialRanks = rankService.getPlayerRanks(
                 players.stream().map(Player::getUserId).collect(Collectors.toList())
