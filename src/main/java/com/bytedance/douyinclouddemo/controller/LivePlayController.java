@@ -79,6 +79,7 @@ public class LivePlayController {
         try {
             // Then process game results
             GameEndDTO gameEndDTO = livePlayService.processGameEnd(header.getAnchorOpenID(), gameResultDTO);
+            log.info("finish game result: {}",gameEndDTO);
             // finish the game in LivePlayService
             boolean success = livePlayService.finishGame(header);
             if (!success) {
