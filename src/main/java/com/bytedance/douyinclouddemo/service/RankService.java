@@ -1,5 +1,8 @@
 package com.bytedance.douyinclouddemo.service;
 
+import com.bytedance.douyinclouddemo.dto.RankPlayerDTO;
+import com.bytedance.douyinclouddemo.entity.Player;
+import com.bytedance.douyinclouddemo.service.PlayerService;
 import com.bytedance.douyinclouddemo.utils.KVPair;
 import lombok.extern.slf4j.Slf4j;
 import lombok.var;
@@ -20,6 +23,9 @@ public class RankService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
     
+    @Autowired
+    private PlayerService playerService;
+    
     private static final String GLOBAL_RANK_KEY = "rank:global";
     
     /**
@@ -34,21 +40,37 @@ public class RankService {
         }
     }
 
+
     /**
-     * Get top N players with their scores
+     * Get top N players with their detailed information
      */
-    public List<KVPair<String, Double>> getTopPlayers(int n) {
+    public List<Player> getTopPlayersWithInfo(int n) {
         try {
             var tuples = redisTemplate.opsForZSet().reverseRangeWithScores(GLOBAL_RANK_KEY, 0, n - 1);
             if (tuples == null) {
                 return new ArrayList<>();
             }
-            
-            return tuples.stream()
-                .map(tuple -> new KVPair<>(tuple.getValue().toString(), tuple.getScore()))
+
+            // Extract userIds from tuples
+            List<String> userIds = tuples.stream()
+                    .map(tuple -> tuple.getValue().toString())
                     .collect(Collectors.toList());
+
+            // Get all players at once
+            List<Player> players = playerService.findByUserId(userIds);
+
+            // Create userId to Player map for ordering
+            Map<String, Player> playerMap = players.stream()
+                    .collect(Collectors.toMap(Player::getUserId, player -> player));
+
+            // Return players in the same order as the ranking
+            return tuples.stream()
+                    .map(tuple -> playerMap.get(tuple.getValue().toString()))
+                    .filter(player -> player != null)
+                    .collect(Collectors.toList());
+
         } catch (Exception e) {
-            log.error("Failed to get top {} players", n, e);
+            log.error("Failed to get top {} players with info", n, e);
             return new ArrayList<>();
         }
     }

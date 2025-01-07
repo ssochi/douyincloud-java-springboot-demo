@@ -8,6 +8,7 @@ import com.bytedance.douyinclouddemo.model.TextAntidirtRequest;
 import com.bytedance.douyinclouddemo.service.PlayerService;
 import com.bytedance.douyinclouddemo.service.RedisService;
 import com.bytedance.douyinclouddemo.service.RoomService;
+import com.bytedance.douyinclouddemo.service.RankService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
+import com.bytedance.douyinclouddemo.utils.KVPair;
+import com.bytedance.douyinclouddemo.dto.RankPlayerDTO;
 
 @RestController
 @Slf4j
@@ -91,6 +95,9 @@ public class HelloController {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private RankService rankService;
+
     /**
      * 查询玩家信息
      */
@@ -155,6 +162,44 @@ public class HelloController {
         } catch (Exception e) {
             log.error("Failed to close room: {}", roomId, e);
             response.failure("Error closing room: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 获取排行榜前N名玩家
+     */
+    @GetMapping("/api/rank/top/{n}")
+    public JsonResponse getTopPlayers(@PathVariable int n) {
+        log.info("Getting top {} players from ranking", n);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            List<Player> topPlayers = rankService.getTopPlayersWithInfo(n);
+            response.success(objectMapper.writeValueAsString(topPlayers));
+        } catch (Exception e) {
+            log.error("Failed to get top players", e);
+            response.failure("Error getting top players: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 重置排行榜
+     */
+    @DeleteMapping("/api/rank/reset")
+    public JsonResponse resetRankings() {
+        log.info("Resetting rankings");
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            rankService.resetRankings();
+            response.success("Rankings reset successfully");
+        } catch (Exception e) {
+            log.error("Failed to reset rankings", e);
+            response.failure("Error resetting rankings: " + e.getMessage());
         }
         
         return response;

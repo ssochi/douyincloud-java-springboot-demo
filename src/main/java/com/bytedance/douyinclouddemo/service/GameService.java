@@ -176,12 +176,7 @@ public class GameService {
     }
 
     private List<Player> getTopPlayers() {
-        List<KVPair<String, Double>> topRankings = rankService.getTopPlayers(10);
-        return playerService.findByUserId(
-                topRankings.stream()
-                .map(KVPair::getKey)
-                .collect(Collectors.toList())
-        );
+        return rankService.getTopPlayersWithInfo(20);
     }
 
     /**
