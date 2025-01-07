@@ -176,7 +176,7 @@ public class GameService {
     }
 
     private List<Player> getTopPlayers() {
-        return rankService.getTopPlayersWithInfo(20);
+        return playerService.getTopPlayersWithInfo(20);
     }
 
     /**

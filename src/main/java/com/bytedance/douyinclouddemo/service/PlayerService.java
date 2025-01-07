@@ -3,17 +3,20 @@ package com.bytedance.douyinclouddemo.service;
 import com.bytedance.douyinclouddemo.entity.Player;
 import com.bytedance.douyinclouddemo.entity.PlayerExt;
 import com.bytedance.douyinclouddemo.repository.PlayerRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class PlayerService {
     
     private static final String PLAYER_CACHE_PREFIX = "player:";
@@ -132,6 +135,34 @@ public class PlayerService {
                            CACHE_DURATION, 
                            TimeUnit.MINUTES);
         return updatedPlayer;
+    }
+
+    /**
+     * Get top N players with their detailed information
+     */
+    public List<Player> getTopPlayersWithInfo(int n) {
+        try {
+
+            // Extract userIds from tuples
+            List<String> userIds = rankService.getTopPlayerID(n);
+
+            // Get all players at once
+            List<Player> players = findByUserId(userIds);
+
+            // Create userId to Player map for ordering
+            Map<String, Player> playerMap = players.stream()
+                    .collect(Collectors.toMap(Player::getUserId, player -> player));
+
+            // Return players in the same order as the ranking
+            return userIds.stream()
+                    .map(playerMap::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Failed to get top {} players with info", n, e);
+            return new ArrayList<>();
+        }
     }
     
     public void clearPlayerCache(String userId) {

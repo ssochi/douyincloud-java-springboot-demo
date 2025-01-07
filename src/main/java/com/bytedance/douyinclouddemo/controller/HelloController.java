@@ -176,7 +176,7 @@ public class HelloController {
         JsonResponse response = new JsonResponse();
         
         try {
-            List<Player> topPlayers = rankService.getTopPlayersWithInfo(n);
+            List<Player> topPlayers = playerService.getTopPlayersWithInfo(n);
             response.success(objectMapper.writeValueAsString(topPlayers));
         } catch (Exception e) {
             log.error("Failed to get top players", e);

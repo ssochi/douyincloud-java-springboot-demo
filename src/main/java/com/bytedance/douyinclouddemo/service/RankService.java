@@ -10,10 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,10 +19,7 @@ public class RankService {
     
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
-    
-    @Autowired
-    private PlayerService playerService;
-    
+
     private static final String GLOBAL_RANK_KEY = "rank:global";
     
     /**
@@ -40,39 +34,16 @@ public class RankService {
         }
     }
 
-
-    /**
-     * Get top N players with their detailed information
-     */
-    public List<Player> getTopPlayersWithInfo(int n) {
-        try {
-            var tuples = redisTemplate.opsForZSet().reverseRangeWithScores(GLOBAL_RANK_KEY, 0, n - 1);
-            if (tuples == null) {
-                return new ArrayList<>();
-            }
-
-            // Extract userIds from tuples
-            List<String> userIds = tuples.stream()
-                    .map(tuple -> tuple.getValue().toString())
-                    .collect(Collectors.toList());
-
-            // Get all players at once
-            List<Player> players = playerService.findByUserId(userIds);
-
-            // Create userId to Player map for ordering
-            Map<String, Player> playerMap = players.stream()
-                    .collect(Collectors.toMap(Player::getUserId, player -> player));
-
-            // Return players in the same order as the ranking
-            return tuples.stream()
-                    .map(tuple -> playerMap.get(tuple.getValue().toString()))
-                    .filter(player -> player != null)
-                    .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            log.error("Failed to get top {} players with info", n, e);
+    public List<String> getTopPlayerID(int n){
+        var tuples = redisTemplate.opsForZSet().reverseRangeWithScores(GLOBAL_RANK_KEY, 0, n - 1);
+        if (tuples == null) {
             return new ArrayList<>();
         }
+
+        // Extract userIds from tuples
+        return  tuples.stream()
+                .map(tuple -> tuple.getValue().toString())
+                .collect(Collectors.toList());
     }
     
     /**
