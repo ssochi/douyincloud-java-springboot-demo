@@ -102,7 +102,7 @@ public class GameService {
             player.setGlory(player.getGlory() + gloryGained);
             player.setGameCount(player.getGameCount() + 1);
             
-            rankService.updatePlayerScore(player.getUserId(), score);
+            rankService.updatePlayerScore(player.getUserId(), player.getScore());
             
             log.info("Player {} earned score: {} and glory: {}", 
                     player.getUserId(), score, gloryGained);
