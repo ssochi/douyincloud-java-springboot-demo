@@ -212,4 +212,34 @@ public class RoomService {
             return null;
         }
     }
+
+    /**
+     * 获取所有房间列表
+     *
+     * @return 所有房间的信息列表，如果出错返回空列表
+     */
+    public List<Room> listAllRooms() {
+        try {
+            // 使用pattern匹配所有房间的创建时间key
+            Set<String> roomKeys = redisTemplate.keys(ROOM_CREATE_TIME_KEY_PREFIX + "*");
+            if (roomKeys == null || roomKeys.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            List<Room> rooms = new ArrayList<>();
+            for (String key : roomKeys) {
+                // 从key中提取roomID
+                String roomID = key.substring(ROOM_CREATE_TIME_KEY_PREFIX.length());
+                Room room = getRoomInfo(roomID);
+                if (room != null) {
+                    rooms.add(room);
+                }
+            }
+
+            return rooms;
+        } catch (Exception e) {
+            log.error("Failed to list all rooms", e);
+            return new ArrayList<>();
+        }
+    }
 }

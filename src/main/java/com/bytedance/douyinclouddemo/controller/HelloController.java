@@ -204,4 +204,23 @@ public class HelloController {
         
         return response;
     }
+
+    /**
+     * 列出所有房间
+     */
+    @GetMapping("/api/rooms")
+    public JsonResponse listAllRooms() {
+        log.info("Listing all rooms");
+        JsonResponse response = new JsonResponse();
+
+        try {
+            List<Room> rooms = roomService.listAllRooms();
+            response.success(objectMapper.writeValueAsString(rooms));
+        } catch (Exception e) {
+            log.error("Failed to list rooms", e);
+            response.failure("Error listing rooms: " + e.getMessage());
+        }
+
+        return response;
+    }
 }

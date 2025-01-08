@@ -21,14 +21,14 @@ public class RankService {
     private RedisTemplate<String, Object> redisTemplate;
 
     private static final String GLOBAL_RANK_KEY = "rank:global";
-    
+
     /**
-     * Update player's score in ranking
+     * Update player's score in ranking with absolute score value
      */
-    public void updatePlayerScore(String playerId, long deltaScore) {
+    public void updatePlayerScore(String playerId, long score) {
         try {
-            redisTemplate.opsForZSet().incrementScore(GLOBAL_RANK_KEY, playerId, deltaScore);
-            log.debug("Updated ranking for player {}, delta score: {}", playerId, deltaScore);
+            redisTemplate.opsForZSet().add(GLOBAL_RANK_KEY, playerId, score);
+            log.debug("Updated ranking for player {}, new score: {}", playerId, score);
         } catch (Exception e) {
             log.error("Failed to update ranking for player: {}", playerId, e);
         }
