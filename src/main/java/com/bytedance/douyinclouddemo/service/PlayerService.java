@@ -2,18 +2,18 @@ package com.bytedance.douyinclouddemo.service;
 
 import com.bytedance.douyinclouddemo.entity.Player;
 import com.bytedance.douyinclouddemo.entity.PlayerExt;
+import com.bytedance.douyinclouddemo.model.RankType;
 import com.bytedance.douyinclouddemo.repository.PlayerRepository;
+import com.bytedance.douyinclouddemo.utils.DateUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.Map;
 
 @Service
 @Slf4j
@@ -59,14 +59,14 @@ public class PlayerService {
             return new ArrayList<>();
         }
 
-        List<Player> result = new ArrayList<>();
+        List<Player> players = new ArrayList<>();
         List<String> missingUserIds = new ArrayList<>();
 
         // Batch query Redis for all keys
         for (String userId : userIds) {
             Player player = redisService.getJson(PLAYER_CACHE_PREFIX + userId, Player.class);
             if (player != null) {
-                result.add(player);
+                players.add(player);
             } else {
                 missingUserIds.add(userId);
             }
@@ -83,24 +83,50 @@ public class PlayerService {
                                    CACHE_DURATION, 
                                    TimeUnit.MINUTES);
             }
-            result.addAll(dbPlayers);
+            players.addAll(dbPlayers);
         }
 
+        return AssignRank(players);
+    }
+
+    @NotNull
+    private List<Player> AssignRank(List<Player> players) {
         // Add rank information to all players
         Map<String, Integer> ranks = rankService.getPlayerRanks(
-            result.stream()
+            players.stream()
                 .map(Player::getUserId)
-                .collect(Collectors.toList())
+                .collect(Collectors.toList()),RankType.GLOBAL
         );
-        
-        for (Player player : result) {
+        Map<String, Integer> weekRanks = rankService.getPlayerRanks(
+                players.stream()
+                        .map(Player::getUserId)
+                        .collect(Collectors.toList()),RankType.WEEKLY
+        );
+
+        for (Player player : players) {
+            checkRankTimeRangeAndUpdate(player);
             if (player.getExt() == null) {
                 player.setExt(new PlayerExt());
             }
             player.getExt().setRank(ranks.getOrDefault(player.getUserId(), 9999));
+            player.getExt().setWeekRank(weekRanks.getOrDefault(player.getUserId(),9999));
         }
 
-        return result;
+        return players;
+    }
+
+    private void checkRankTimeRangeAndUpdate(Player player){
+        if (!DateUtils.isCurrentWeek(player.getExt().getLastWeekRankUpdateDate())){
+            player.getExt().setWeekScore(0L);
+            player.getExt().setWeekRank(9999);
+            player.getExt().setLastRankUpdateDate(new Date());
+        }
+
+        if (!DateUtils.isCurrentMonth(player.getExt().getLastRankUpdateDate())){
+            player.setScore(0L);
+            player.getExt().setRank(9999);
+            player.getExt().setLastRankUpdateDate(new Date());
+        }
     }
 
     public List<Player> findByUserIdDirectly(List<String> userIds) {
@@ -110,20 +136,7 @@ public class PlayerService {
         List<Player> players = playerRepository.findByUserIdIn(userIds);
         
         // Add rank information to all players
-        Map<String, Integer> ranks = rankService.getPlayerRanks(
-            players.stream()
-                .map(Player::getUserId)
-                .collect(Collectors.toList())
-        );
-        
-        for (Player player : players) {
-            if (player.getExt() == null) {
-                player.setExt(new PlayerExt());
-            }
-            player.getExt().setRank(ranks.getOrDefault(player.getUserId(), 9999));
-        }
-        
-        return players;
+        return AssignRank(players);
     }
     
     @Transactional
@@ -140,11 +153,11 @@ public class PlayerService {
     /**
      * Get top N players with their detailed information
      */
-    public List<Player> getTopPlayersWithInfo(int n) {
+    public List<Player> getTopPlayersWithInfo(int n,RankType rankType) {
         try {
 
             // Extract userIds from tuples
-            List<String> userIds = rankService.getTopPlayerID(n);
+            List<String> userIds = rankService.getTopPlayerID(n, rankType);
 
             // Get all players at once
             List<Player> players = findByUserId(userIds);

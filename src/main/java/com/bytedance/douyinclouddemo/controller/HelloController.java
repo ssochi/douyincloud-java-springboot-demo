@@ -1,10 +1,7 @@
 package com.bytedance.douyinclouddemo.controller;
 
 import com.bytedance.douyinclouddemo.entity.Player;
-import com.bytedance.douyinclouddemo.model.JsonResponse;
-import com.bytedance.douyinclouddemo.model.Room;
-import com.bytedance.douyinclouddemo.model.TextAntidirt;
-import com.bytedance.douyinclouddemo.model.TextAntidirtRequest;
+import com.bytedance.douyinclouddemo.model.*;
 import com.bytedance.douyinclouddemo.service.PlayerService;
 import com.bytedance.douyinclouddemo.service.RedisService;
 import com.bytedance.douyinclouddemo.service.RoomService;
@@ -170,13 +167,13 @@ public class HelloController {
     /**
      * 获取排行榜前N名玩家
      */
-    @GetMapping("/api/rank/top/{n}")
-    public JsonResponse getTopPlayers(@PathVariable int n) {
+    @GetMapping("/api/rank/top/{rankType}/{n}")
+    public JsonResponse getTopPlayers(@PathVariable int n,@PathVariable RankType rankType) {
         log.info("Getting top {} players from ranking", n);
         JsonResponse response = new JsonResponse();
         
         try {
-            List<Player> topPlayers = playerService.getTopPlayersWithInfo(n);
+            List<Player> topPlayers = playerService.getTopPlayersWithInfo(n,rankType);
             response.success(objectMapper.writeValueAsString(topPlayers));
         } catch (Exception e) {
             log.error("Failed to get top players", e);
@@ -189,13 +186,13 @@ public class HelloController {
     /**
      * 重置排行榜
      */
-    @DeleteMapping("/api/rank/reset")
-    public JsonResponse resetRankings() {
+    @DeleteMapping("/api/rank/reset/{rankType}")
+    public JsonResponse resetRankings(@PathVariable RankType rankType) {
         log.info("Resetting rankings");
         JsonResponse response = new JsonResponse();
         
         try {
-            rankService.resetRankings();
+            rankService.resetRankings(rankType);
             response.success("Rankings reset successfully");
         } catch (Exception e) {
             log.error("Failed to reset rankings", e);

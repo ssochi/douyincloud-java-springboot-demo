@@ -123,8 +123,8 @@ public class LivePlayController {
      */
     @RequestMapping(path = "/websocket_callback", method = {RequestMethod.POST, RequestMethod.GET})
     public JsonResponse websocketCallback(HttpServletRequest request) {
-        log.info("enter websocket data callback");
         String eventType = request.getHeader(Constants.Headers.EVENT_TYPE);
+        log.info("enter websocket data callback, type: {}",eventType);
         String result = livePlayService.handleWebsocketCallback(eventType);
         
         JsonResponse response = new JsonResponse();

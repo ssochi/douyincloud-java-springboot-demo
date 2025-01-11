@@ -74,9 +74,9 @@ public class LivePlayService {
         for (String msgType : msgTypeList) {
             boolean result = startLiveDataTask(header.getAppID(), header.getRoomID(), msgType);
             if (result) {
-                log.info("{} 推送开启成功", msgType);
+                log.info("{} push start success", msgType);
             } else {
-                log.error("{} 推送开启失败", msgType);
+                log.error("{} push start failed", msgType);
                 allSuccess = false;
             }
         }

@@ -5,6 +5,7 @@ import com.bytedance.douyinclouddemo.dto.GameResultDTO;
 import com.bytedance.douyinclouddemo.dto.PlayerEndInfo;
 import com.bytedance.douyinclouddemo.entity.Player;
 import com.bytedance.douyinclouddemo.model.LiveCommentModel;
+import com.bytedance.douyinclouddemo.model.RankType;
 import com.bytedance.douyinclouddemo.model.Room;
 import com.bytedance.douyinclouddemo.repository.PlayerRepository;
 import com.bytedance.douyinclouddemo.utils.KVPair;
@@ -99,10 +100,14 @@ public class GameService {
             Long gloryGained = score / 150;
             
             player.setScore(player.getScore() + score);
+            player.getExt().setWeekScore(player.getExt().getWeekScore() + score);
+            player.getExt().setLastRankUpdateDate(new Date());
+            player.getExt().setLastWeekRankUpdateDate(new Date());
             player.setGlory(player.getGlory() + gloryGained);
             player.setGameCount(player.getGameCount() + 1);
             
-            rankService.updatePlayerScore(player.getUserId(), player.getScore());
+            rankService.updatePlayerScore(player.getUserId(), player.getScore(), RankType.GLOBAL);
+            rankService.updatePlayerScore(player.getUserId(), player.getExt().getWeekScore(), RankType.WEEKLY);
             
             log.info("Player {} earned score: {} and glory: {}", 
                     player.getUserId(), score, gloryGained);
@@ -120,7 +125,10 @@ public class GameService {
 
             // Get initial rankings for calculating rank changes
             Map<String, Integer> initialRanks = rankService.getPlayerRanks(
-                players.stream().map(Player::getUserId).collect(Collectors.toList())
+                players.stream().map(Player::getUserId).collect(Collectors.toList()),RankType.GLOBAL
+            );
+            Map<String, Integer> initialWeekRanks = rankService.getPlayerRanks(
+                    players.stream().map(Player::getUserId).collect(Collectors.toList()),RankType.WEEKLY
             );
             
             // Create PlayerEndInfo list and clear cache
@@ -133,14 +141,18 @@ public class GameService {
                 Long deltaGlory = deltaScore != null ? deltaScore / 150 : 0L;
                 
                 // Get rank change
-                int currentRank = rankService.getPlayerRank(player.getUserId());
+                int currentRank = rankService.getPlayerRank(player.getUserId(),RankType.GLOBAL);
+                int currentWeekRank = rankService.getPlayerRank(player.getUserId(),RankType.WEEKLY);
                 int deltaRank = initialRanks.get(player.getUserId()) - currentRank;
+                int deltaWeekRank = initialWeekRanks.get(player.getUserId()) - currentWeekRank;
                 
                 playerEndInfos.add(PlayerEndInfo.builder()
                         .player(player)
                         .deltaScore(deltaScore)
+                        .deltaWeekScore(deltaScore)
                         .deltaGlory(deltaGlory)
                         .deltaRank(deltaRank)
+                        .deltaWeekRank(deltaWeekRank)
                         .isQuit(false)
                         .build());
             }
@@ -159,13 +171,15 @@ public class GameService {
                 }
             }
 
-            List<Player> totalRankTop = getTopPlayers();
+            List<Player> totalRankTop = playerService.getTopPlayersWithInfo(20,RankType.GLOBAL);
+            List<Player> weekRankTop = playerService.getTopPlayersWithInfo(20,RankType.WEEKLY);
             roomService.closeRoom(anchorOpenID);
             
             log.info("Game ended successfully for room {}", anchorOpenID);
 
             return GameEndDTO.builder()
                     .totalRankTop(totalRankTop)
+                    .weekRankTop(weekRankTop)
                     .playerEndInfos(playerEndInfos)
                     .build();
 
@@ -175,9 +189,6 @@ public class GameService {
         }
     }
 
-    private List<Player> getTopPlayers() {
-        return playerService.getTopPlayersWithInfo(20);
-    }
 
     /**
      * 处理玩家加入房间

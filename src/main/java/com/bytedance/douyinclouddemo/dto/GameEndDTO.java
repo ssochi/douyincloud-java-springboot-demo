@@ -11,6 +11,7 @@ import java.util.Map;
 @Builder
 public class GameEndDTO {
     public List<Player> totalRankTop;
+    public List<Player> weekRankTop;
     public List<PlayerEndInfo> playerEndInfos;
 }
 

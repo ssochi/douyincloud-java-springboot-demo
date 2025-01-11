@@ -9,6 +9,7 @@ import lombok.var;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import com.bytedance.douyinclouddemo.model.RankType;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -20,28 +21,25 @@ public class RankService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    private static final String GLOBAL_RANK_KEY = "rank:global";
-
     /**
-     * Update player's score in ranking with absolute score value
+     * Update player's score in specified ranking
      */
-    public void updatePlayerScore(String playerId, long score) {
+    public void updatePlayerScore(String playerId, long score, RankType rankType) {
         try {
-            redisTemplate.opsForZSet().add(GLOBAL_RANK_KEY, playerId, score);
-            log.debug("Updated ranking for player {}, new score: {}", playerId, score);
+            redisTemplate.opsForZSet().add(rankType.getKey(), playerId, score);
+            log.debug("Updated rankings for player {}, new score: {}", playerId, score);
         } catch (Exception e) {
-            log.error("Failed to update ranking for player: {}", playerId, e);
+            log.error("Failed to update rankings for player: {}", playerId, e);
         }
     }
 
-    public List<String> getTopPlayerID(int n){
-        var tuples = redisTemplate.opsForZSet().reverseRangeWithScores(GLOBAL_RANK_KEY, 0, n - 1);
+    public List<String> getTopPlayerID(int n, RankType rankType) {
+        var tuples = redisTemplate.opsForZSet().reverseRangeWithScores(rankType.getKey(), 0, n - 1);
         if (tuples == null) {
             return new ArrayList<>();
         }
 
-        // Extract userIds from tuples
-        return  tuples.stream()
+        return tuples.stream()
                 .map(tuple -> tuple.getValue().toString())
                 .collect(Collectors.toList());
     }
@@ -49,18 +47,18 @@ public class RankService {
     /**
      * Reset or initialize rankings
      */
-    public void resetRankings() {
+    public void resetRankings(RankType rankType) {
         try {
-            redisTemplate.delete(GLOBAL_RANK_KEY);
-            log.info("Rankings reset successfully");
+            redisTemplate.delete(rankType.getKey());
+            log.info("{} rankings reset successfully", rankType);
         } catch (Exception e) {
-            log.error("Failed to reset rankings", e);
+            log.error("Failed to reset rankings for {}", rankType, e);
         }
     }
     
-    public Integer getPlayerRank(String playerId) {
+    public Integer getPlayerRank(String playerId, RankType rankType) {
         try {
-            Long rank = redisTemplate.opsForZSet().reverseRank(GLOBAL_RANK_KEY, playerId);
+            Long rank = redisTemplate.opsForZSet().reverseRank(rankType.getKey(), playerId);
             return rank != null ? rank.intValue() + 1 : 9999;
         } catch (Exception e) {
             log.error("Failed to get rank for player: {}", playerId, e);
@@ -68,10 +66,10 @@ public class RankService {
         }
     }
 
-    public Map<String, Integer> getPlayerRanks(List<String> playerIds) {
+    public Map<String, Integer> getPlayerRanks(List<String> playerIds, RankType rankType) {
         Map<String, Integer> ranks = new HashMap<>();
         for (String playerId : playerIds) {
-            Integer rank = getPlayerRank(playerId);
+            Integer rank = getPlayerRank(playerId, rankType);
             if (rank != null) {
                 ranks.put(playerId, rank);
             }
