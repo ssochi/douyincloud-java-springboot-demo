@@ -220,4 +220,84 @@ public class HelloController {
 
         return response;
     }
+
+    /**
+     * 设置游戏公告
+     */
+    @PostMapping("/api/announcement")
+    public JsonResponse setAnnouncement(@RequestParam String announcement) {
+        log.info("Setting game announcement: {}", announcement);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            rankService.setAnnouncement(announcement);
+            response.success("Announcement updated successfully");
+        } catch (Exception e) {
+            log.error("Failed to set announcement", e);
+            response.failure("Error setting announcement: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 获取游戏公告
+     */
+    @GetMapping("/api/announcement")
+    public JsonResponse getAnnouncement() {
+        log.info("Getting game announcement");
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            String announcement = rankService.getAnnouncement();
+            if (announcement != null) {
+                response.success(announcement);
+            } else {
+                response.success(""); // Return empty string if no announcement
+            }
+        } catch (Exception e) {
+            log.error("Failed to get announcement", e);
+            response.failure("Error getting announcement: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 设置最小支持版本号
+     */
+    @PostMapping("/api/min-version")
+    public JsonResponse setMinVersion(@RequestParam int version) {
+        log.info("Setting minimum version requirement: {}", version);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            rankService.setMinVersion(version);
+            response.success("Minimum version requirement updated successfully");
+        } catch (Exception e) {
+            log.error("Failed to set minimum version", e);
+            response.failure("Error setting minimum version: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * 获取最小支持版本号
+     */
+    @GetMapping("/api/min-version")
+    public JsonResponse getMinVersion() {
+        log.info("Getting minimum version requirement");
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            int minVersion = rankService.getMinVersion();
+            response.success(String.valueOf(minVersion));
+        } catch (Exception e) {
+            log.error("Failed to get minimum version", e);
+            response.failure("Error getting minimum version: " + e.getMessage());
+        }
+        
+        return response;
+    }
 }

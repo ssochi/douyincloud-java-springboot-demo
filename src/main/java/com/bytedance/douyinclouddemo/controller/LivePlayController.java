@@ -6,6 +6,7 @@ import com.bytedance.douyinclouddemo.dto.GameRequestHeader;
 import com.bytedance.douyinclouddemo.dto.GameResultDTO;
 import com.bytedance.douyinclouddemo.model.JsonResponse;
 import com.bytedance.douyinclouddemo.service.LivePlayService;
+import com.bytedance.douyinclouddemo.service.RankService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +19,12 @@ public class LivePlayController {
 
     private final LivePlayService livePlayService;
     private final ObjectMapper objectMapper;  // 添加 ObjectMapper
-    public LivePlayController(LivePlayService livePlayService, ObjectMapper objectMapper) {
+    private final RankService rankService;  // Add RankService
+
+    public LivePlayController(LivePlayService livePlayService, ObjectMapper objectMapper, RankService rankService) {
         this.livePlayService = livePlayService;
         this.objectMapper = objectMapper;
+        this.rankService = rankService;
     }
 
     /**
@@ -129,6 +133,50 @@ public class LivePlayController {
         
         JsonResponse response = new JsonResponse();
         response.success(result);
+        return response;
+    }
+
+    /**
+     * 获取游戏公告
+     */
+    @GetMapping("/game/announcement")
+    public JsonResponse getGameAnnouncement() {
+        log.info("Getting game announcement");
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            String announcement = rankService.getAnnouncement();
+            response.success(announcement != null ? announcement : "");
+        } catch (Exception e) {
+            log.error("Failed to get game announcement", e);
+            response.failure("获取游戏公告失败");
+        }
+        return response;
+    }
+
+    /**
+     * 检查客户端版本是否可用
+     * @param version 客户端版本号
+     */
+    @GetMapping("/game/check_version")
+    public JsonResponse checkVersion(@RequestParam int version) {
+        log.info("Checking client version: {}", version);
+        JsonResponse response = new JsonResponse();
+        
+        try {
+            int minVersion = rankService.getMinVersion();
+            boolean isCompatible = version >= minVersion;
+            
+            if (isCompatible) {
+                response.success("版本检查通过");
+            } else {
+                response.failure("当前版本过低，请更新到最新版本");
+                response.setData(String.valueOf(minVersion));  // 返回所需的最低版本号
+            }
+        } catch (Exception e) {
+            log.error("Failed to check version compatibility", e);
+            response.failure("版本检查失败");
+        }
         return response;
     }
 }
