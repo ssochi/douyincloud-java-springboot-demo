@@ -1,8 +1,9 @@
 package com.bytedance.douyinclouddemo.model;
 
 public enum RankType {
-    GLOBAL("rank:global"),
-    WEEKLY("rank:week");
+    GLOBAL("rank:global"), // 月榜
+
+    WEEKLY("rank:week"); // 周榜
 
     private final String key;
 

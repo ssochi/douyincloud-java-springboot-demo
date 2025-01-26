@@ -22,6 +22,9 @@ public class RedisService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private static final String LAST_WEEKLY_RESET_KEY = "rank:last_weekly_reset";
+    private static final String LAST_MONTHLY_RESET_KEY = "rank:last_monthly_reset";
+
     /**
      * Set key-value with expiration
      */
@@ -161,5 +164,37 @@ public class RedisService {
             log.error("Redis deleteAll error: ", e);
             return 0;
         }
+    }
+
+    /**
+     * Get last reset time
+     */
+    public Long getLastResetTime(String key) {
+        try {
+            Object value = redisTemplate.opsForValue().get(key);
+            return value != null ? Long.parseLong(value.toString()) : null;
+        } catch (Exception e) {
+            log.error("Redis get last reset time error: ", e);
+            return null;
+        }
+    }
+
+    /**
+     * Update last reset time
+     */
+    public void updateLastResetTime(String key, long timestamp) {
+        try {
+            redisTemplate.opsForValue().set(key, String.valueOf(timestamp));
+        } catch (Exception e) {
+            log.error("Redis update last reset time error: ", e);
+        }
+    }
+
+    public String getLastWeeklyResetKey() {
+        return LAST_WEEKLY_RESET_KEY;
+    }
+
+    public String getLastMonthlyResetKey() {
+        return LAST_MONTHLY_RESET_KEY;
     }
 }

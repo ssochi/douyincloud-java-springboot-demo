@@ -10,9 +10,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import com.bytedance.douyinclouddemo.model.RankType;
+import org.springframework.scheduling.annotation.Scheduled;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Date;
+import com.bytedance.douyinclouddemo.utils.DateUtils;
 
 @Service
 @Slf4j
@@ -20,6 +27,9 @@ public class RankService {
     
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private RedisService redisService;
 
     private static final String ANNOUNCEMENT_KEY = "game:announcement";
     private static final String MIN_VERSION_KEY = "game:min_version";
@@ -131,6 +141,32 @@ public class RankService {
         } catch (Exception e) {
             log.error("Failed to get minimum version requirement", e);
             return 1;
+        }
+    }
+
+    /**
+     * Check and reset rankings every minute
+     */
+    @Scheduled(cron = "0 * * * * ?")
+    public void checkAndResetRankings() {
+        log.debug("Checking rankings reset condition...");
+        
+        long currentTimestamp = System.currentTimeMillis();
+
+        // Check weekly rankings
+        Long lastWeeklyReset = redisService.getLastResetTime(redisService.getLastWeeklyResetKey());
+        if (lastWeeklyReset == null || !DateUtils.isCurrentWeek(new Date(lastWeeklyReset))) {
+            resetRankings(RankType.WEEKLY);
+            redisService.updateLastResetTime(redisService.getLastWeeklyResetKey(), currentTimestamp);
+            log.info("Weekly rankings have been reset at {}", new Date(currentTimestamp));
+        }
+
+        // Check monthly rankings
+        Long lastMonthlyReset = redisService.getLastResetTime(redisService.getLastMonthlyResetKey());
+        if (lastMonthlyReset == null || !DateUtils.isCurrentMonth(new Date(lastMonthlyReset))) {
+            resetRankings(RankType.GLOBAL);
+            redisService.updateLastResetTime(redisService.getLastMonthlyResetKey(), currentTimestamp);
+            log.info("Monthly rankings have been reset at {}", new Date(currentTimestamp));
         }
     }
 }
